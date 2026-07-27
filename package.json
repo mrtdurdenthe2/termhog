@@ -1,0 +1,29 @@
+{
+  "name": "termhog",
+  "version": "0.1.0",
+  "description": "PostHog stats in your terminal without slowing down shell startup",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "bin": {
+    "termhog": "src/cli.ts",
+    "termhog-prompt": "dist/termhog-prompt"
+  },
+  "scripts": {
+    "build": "bun run build:prompt",
+    "build:prompt": "bun build --compile --minify src/prompt.ts --outfile dist/termhog-prompt",
+    "bench:prompt": "bun run build:prompt && bun scripts/benchmark-prompt.ts",
+    "check": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@opentui/core": "0.4.5",
+    "effect": "4.0.0-beta.102"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  }
+}
