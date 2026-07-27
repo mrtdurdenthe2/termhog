@@ -5,6 +5,7 @@ import {
   formatCount,
   formatPercentageChange,
   formatSnapshot,
+  resampleValues,
 } from "../src/format.ts"
 import type { Stats } from "../src/model.ts"
 
@@ -84,9 +85,20 @@ test("formatBrailleGraph packs two hourly values into each cell", () => {
 })
 
 test("formatBrailleGraphRows scales values across multiple terminal rows", () => {
-  const rows = formatBrailleGraphRows([1, 2, 3, 4, 5, 6, 7], 3)
+  const rows = formatBrailleGraphRows(
+    resampleValues([1, 2, 3, 4, 5, 6, 7], 24),
+    3,
+  )
 
   expect(rows).toHaveLength(3)
-  expect(rows.every((row) => Array.from(row).length === 4)).toBe(true)
+  expect(rows.every((row) => Array.from(row).length === 12)).toBe(true)
   expect(rows[0]).not.toBe(rows[2])
+})
+
+test("resampleValues preserves graph endpoints", () => {
+  const values = resampleValues([10, 20, 5], 24)
+
+  expect(values).toHaveLength(24)
+  expect(values[0]).toBe(10)
+  expect(values[23]).toBe(5)
 })

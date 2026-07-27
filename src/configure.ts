@@ -138,6 +138,15 @@ export const runConfigure = async (): Promise<void> => {
 
   process.stdout.write("\ntermhog configure\n")
   const host = await selectHost()
+  process.stdout.write("\nCreate a PostHog personal API key\n")
+  process.stdout.write(`  1. Open ${host.origin}/settings/user-api-keys\n`)
+  process.stdout.write("  2. Select New personal API key\n")
+  process.stdout.write("  3. Name it termhog\n")
+  process.stdout.write("  4. Set Organization & project access to All access (for automatic project discovery)\n")
+  process.stdout.write("  5. Grant Query Read (required for analytics)\n")
+  process.stdout.write("  6. Grant Organization Read (required for automatic project discovery)\n")
+  process.stdout.write("  7. Create the key and paste it below\n")
+  process.stdout.write("  Without both discovery settings, setup will ask for the numeric project ID.\n\n")
   const environmentKey = process.env.POSTHOG_PERSONAL_API_KEY
   const useEnvironment = environmentKey
     ? (await ask("Use POSTHOG_PERSONAL_API_KEY from the environment? [Y/n]: "))
@@ -199,4 +208,9 @@ export const runConfigure = async (): Promise<void> => {
   if (environmentKey) {
     process.stdout.write("Environment variables override this file; remove old POSTHOG_* exports when no longer needed.\n")
   }
+  process.stdout.write("\nCustomize the terminal output anytime:\n")
+  process.stdout.write("  termhog widgets list\n")
+  process.stdout.write("  termhog widgets set 24h week mobile\n")
+  process.stdout.write("  termhog widgets add week\n")
+  process.stdout.write("  termhog widgets remove mobile\n")
 }

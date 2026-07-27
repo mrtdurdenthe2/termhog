@@ -6,9 +6,9 @@ network request or a TUI renderer on the shell startup path.
 ```text
   PostHog  ·  06:43 PM
   24h     12.3K events +18%  ·  678 users +7.4%  ·  ⡀⡄⣤⣶⣿⣷⣦⣀⣄⣤⣶⣿ 24h
-  week    54.1K events +11%  ·  2.4K users -3.2%  ·  ⠀⠀⠀⣀⣶⠀⣿
-                                                     ⣀⣶⣀⣿⣿⣿⣿
-                                                     ⣿⣿⣿⣿⣿⣿⣿ 7d
+  week    54.1K events +11%  ·  2.4K users -3.2%  ·  ⢀⣀⣤⣶⣶⣦⣶⣿⣿⣿⣶⣦
+                                                     ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+                                                     ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿ 7d
   mobile  4.2K events +9.1%  ·  391 users +4.8%  ·  ⡀⣀⣤⣶⣷⣦⣀⣤⣶⣿⣤⣀ 24h
 ```
 
@@ -50,6 +50,30 @@ Query Read access, saves the selected project in
 installs shell hooks. Automatic project discovery requires **Organization
 Read** permission; if it is unavailable, setup asks for the numeric project ID
 instead.
+
+Personal API key permissions:
+
+- **Query Read** is required to fetch analytics and validate the connection.
+- **Organization Read** enables automatic project discovery. Without it, setup
+  falls back to asking for the numeric project ID.
+
+To create the key, open PostHog's **Settings → User → Personal API keys** page
+(`https://us.posthog.com/settings/user-api-keys` for US Cloud or
+`https://eu.posthog.com/settings/user-api-keys` for EU Cloud), select **New
+personal API key**, name it `termhog`, grant the permissions above, and create
+the key. Set **Organization & project access** to **All access** and grant
+**Organization Read** so termhog can automatically infer the project. This does
+not mean granting every permission: **Query** remains Read-only. Without both
+discovery settings, setup asks for the numeric project ID. Interactive setup
+prints the correct URL for the selected host.
+
+At the end, setup prints the commands for customizing terminal output. The main
+command is `termhog widgets`; for example:
+
+```sh
+termhog widgets list
+termhog widgets set 24h week mobile
+```
 
 Environment variables remain available as higher-priority overrides:
 
@@ -133,9 +157,13 @@ termhog widgets add week
 termhog widgets remove mobile
 ```
 
+The order passed to `termhog widgets set` is the display order. Widget
+selection can also be overridden with `TERMHOG_WIDGETS=24h,week,mobile`.
+Currently, `24h`, `week`, and `mobile` are the supported built-ins; custom
+queries, filters, titles, and dimensions are not configurable yet.
+
 Selected widgets are combined into one HogQL request and one events-table scan.
 The weekly comparison scans 14 days to cover both adjacent seven-day periods.
-`TERMHOG_WIDGETS=24h,week,mobile` can override the saved selection.
 
 ## Commands
 
@@ -147,6 +175,16 @@ termhog widgets [action]     List or change startup widgets
 termhog install [shell...]   Add startup hooks to installed shells
 termhog init <bash|zsh|fish> Print shell startup integration
 termhog help                 Show command help
+```
+
+Commands are parsed with Effect CLI, which provides typed arguments, generated
+help, validation, version output, and shell completions:
+
+```sh
+termhog --help
+termhog widgets set --help
+termhog --version
+termhog --completions zsh
 ```
 
 ## Performance

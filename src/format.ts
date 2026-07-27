@@ -72,6 +72,25 @@ export const formatBrailleGraphRows = (
 export const formatBrailleGraph = (values: ReadonlyArray<number>): string =>
   formatBrailleGraphRows(values, 1)[0] ?? ""
 
+export const resampleValues = (
+  values: ReadonlyArray<number>,
+  targetLength: number,
+): ReadonlyArray<number> => {
+  if (values.length === 0 || targetLength < 1) return []
+  if (values.length === 1) return Array(targetLength).fill(values[0] ?? 0)
+  if (targetLength === 1) return [values[0] ?? 0]
+
+  return Array.from({ length: targetLength }, (_, index) => {
+    const position = (index * (values.length - 1)) / (targetLength - 1)
+    const lower = Math.floor(position)
+    const upper = Math.ceil(position)
+    const progress = position - lower
+    const from = values[lower] ?? 0
+    const to = values[upper] ?? from
+    return from + (to - from) * progress
+  })
+}
+
 const formatWidgetLines = (
   widget: WidgetStats,
   color: boolean,
@@ -92,7 +111,7 @@ const formatWidgetLines = (
   const colorPrefix = `  ${PINK}${BOLD}${title}${RESET}  ${BOLD}${formatCount(widget.eventCount)}${RESET} events ${colorChange(widget.eventCount, widget.previousEventCount)}  ${DIM}·${RESET}  ${BOLD}${formatCount(widget.uniqueUsers)}${RESET} users ${colorChange(widget.uniqueUsers, widget.previousUniqueUsers)}  ${DIM}·${RESET}  `
   const rowCount = widget.id === "week" ? 3 : 1
   const graphValues = widget.id === "week"
-    ? widget.eventBuckets.flatMap((value) => [value, value])
+    ? resampleValues(widget.eventBuckets, 24)
     : widget.eventBuckets
   const graphs = formatBrailleGraphRows(graphValues, rowCount)
   const indent = " ".repeat(plainPrefix.length)
