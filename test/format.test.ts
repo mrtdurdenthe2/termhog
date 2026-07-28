@@ -61,6 +61,31 @@ describe("formatSnapshot", () => {
     expect(output).toContain("\n  week")
     expect(output.split("\n")).toHaveLength(6)
   })
+
+  test("renders a ranked country widget", () => {
+    const output = formatSnapshot({
+      generatedAt: stats.generatedAt,
+      label: "PostHog",
+      widgets: [{
+        id: "countries",
+        title: "countries",
+        rangeLabel: "7d",
+        eventCount: 0,
+        previousEventCount: 0,
+        uniqueUsers: 0,
+        previousUniqueUsers: 0,
+        eventBuckets: [],
+        items: [
+          { label: "US", value: 5_000 },
+          { label: "GB", value: 2_500 },
+        ],
+      }],
+    }, false)
+
+    expect(output).toContain("top countries by users")
+    expect(output).toContain("United States")
+    expect(output).toContain("5,000 users")
+  })
 })
 
 test("formatCount keeps small values exact", () => {

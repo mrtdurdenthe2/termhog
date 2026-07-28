@@ -6,6 +6,7 @@ const BOLD = "\x1b[1m"
 const PINK = "\x1b[38;5;205m"
 const GREEN = "\x1b[38;5;114m"
 const RED = "\x1b[38;5;203m"
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" })
 
 export const formatCount = (value: number): string =>
   new Intl.NumberFormat("en", {
@@ -98,6 +99,32 @@ const formatWidgetLines = (
   titleOverride?: string,
 ): ReadonlyArray<string> => {
   const title = (titleOverride ?? widget.title).padEnd(titleWidth)
+  if (widget.id === "countries") {
+    const heading = color
+      ? `  ${PINK}${BOLD}${title}${RESET}  top countries by users  ${DIM}·  ${widget.rangeLabel}${RESET}`
+      : `  ${title}  top countries by users  ·  ${widget.rangeLabel}`
+    const items = widget.items ?? []
+    const names = items.map((item) => {
+      try {
+        return regionNames.of(item.label) ?? item.label
+      } catch {
+        return item.label
+      }
+    })
+    const nameWidth = Math.max(...names.map((name) => name.length), 1)
+    const indent = " ".repeat(titleWidth + 4)
+    return [
+      heading,
+      ...items.map((item, index) => {
+        const name = (names[index] ?? item.label).padEnd(nameWidth)
+        const value = `${formatCount(item.value)} users`
+        return color
+          ? `${indent}${DIM}${index + 1}.${RESET} ${name}  ${BOLD}${value}${RESET}`
+          : `${indent}${index + 1}. ${name}  ${value}`
+      }),
+    ]
+  }
+
   const eventChange = formatPercentageChange(
     widget.eventCount,
     widget.previousEventCount,
@@ -110,9 +137,9 @@ const formatWidgetLines = (
   const plainPrefix = `  ${title}  ${summary}`
   const colorPrefix = `  ${PINK}${BOLD}${title}${RESET}  ${BOLD}${formatCount(widget.eventCount)}${RESET} events ${colorChange(widget.eventCount, widget.previousEventCount)}  ${DIM}·${RESET}  ${BOLD}${formatCount(widget.uniqueUsers)}${RESET} users ${colorChange(widget.uniqueUsers, widget.previousUniqueUsers)}  ${DIM}·${RESET}  `
   const rowCount = widget.id === "week" ? 3 : 1
-  const graphValues = widget.id === "week"
-    ? resampleValues(widget.eventBuckets, 24)
-    : widget.eventBuckets
+  const graphValues = widget.eventBuckets.length === 24
+    ? widget.eventBuckets
+    : resampleValues(widget.eventBuckets, 24)
   const graphs = formatBrailleGraphRows(graphValues, rowCount)
   const indent = " ".repeat(plainPrefix.length)
 
@@ -132,7 +159,7 @@ export const formatSnapshot = (stats: Stats, color: boolean): string => {
     minute: "2-digit",
   })
 
-  if (stats.widgets.length === 1) {
+  if (stats.widgets.length === 1 && stats.widgets[0]?.id !== "countries") {
     const widget = stats.widgets[0]
     if (!widget) return ""
     const lines = [...formatWidgetLines(

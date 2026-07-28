@@ -25,6 +25,7 @@ describe("stored configuration", () => {
       projectId: 123,
       host: "https://us.posthog.com",
       label: "Production",
+      pathFilter: "/pricing",
     }
 
     await Effect.runPromise(writeStoredConfiguration(value))
@@ -41,12 +42,14 @@ describe("stored configuration", () => {
       project: process.env.POSTHOG_PROJECT_ID,
       host: process.env.POSTHOG_HOST,
       label: process.env.TERMHOG_LABEL,
+      path: process.env.TERMHOG_PATH,
     }
     Object.assign(process.env, {
       POSTHOG_PERSONAL_API_KEY: "phx_environment",
       POSTHOG_PROJECT_ID: "456",
       POSTHOG_HOST: "https://eu.posthog.com",
       TERMHOG_LABEL: "Environment",
+      TERMHOG_PATH: "/docs",
     })
 
     try {
@@ -61,6 +64,7 @@ describe("stored configuration", () => {
       expect(config.projectId).toBe(456)
       expect(config.host.origin).toBe("https://eu.posthog.com")
       expect(config.label).toBe("Environment")
+      expect(config.pathFilter).toBe("/docs")
     } finally {
       const restore = (name: string, value: string | undefined) => {
         if (value === undefined) delete process.env[name]
@@ -70,6 +74,7 @@ describe("stored configuration", () => {
       restore("POSTHOG_PROJECT_ID", previous.project)
       restore("POSTHOG_HOST", previous.host)
       restore("TERMHOG_LABEL", previous.label)
+      restore("TERMHOG_PATH", previous.path)
     }
   })
 })

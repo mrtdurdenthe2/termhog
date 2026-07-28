@@ -9,6 +9,10 @@ export const WidgetStats = Schema.Struct({
   uniqueUsers: Schema.Number,
   previousUniqueUsers: Schema.Number,
   eventBuckets: Schema.Array(Schema.Number),
+  items: Schema.optionalKey(Schema.Array(Schema.Struct({
+    label: Schema.String,
+    value: Schema.Number,
+  }))),
 })
 
 export interface WidgetStats extends Schema.Schema.Type<typeof WidgetStats> {}

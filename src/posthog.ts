@@ -40,7 +40,7 @@ const condition = (
   return definition.filter ? `(${time}) AND (${definition.filter})` : time
 }
 
-const buildQuery = (definitions: ReadonlyArray<WidgetDefinition>): string => {
+const buildTrendQuery = (definitions: ReadonlyArray<WidgetDefinition>): string => {
   const selections = definitions.flatMap((definition, widgetIndex) => {
     const totalCondition = condition(definition)
     const previousCondition = condition(
@@ -49,8 +49,14 @@ const buildQuery = (definitions: ReadonlyArray<WidgetDefinition>): string => {
       definition.rangeHours,
     )
     const buckets = Array.from({ length: definition.bucketCount }, (_, bucketIndex) => {
-      const start = definition.rangeHours - bucketIndex * definition.bucketHours
-      const end = start - definition.bucketHours
+      const start = Math.round(
+        (definition.rangeHours * (definition.bucketCount - bucketIndex)) /
+          definition.bucketCount,
+      )
+      const end = Math.round(
+        (definition.rangeHours * (definition.bucketCount - bucketIndex - 1)) /
+          definition.bucketCount,
+      )
       return `countIf(${condition(definition, start, end)}) AS widget_${widgetIndex}_bucket_${bucketIndex}`
     })
     return [
@@ -72,6 +78,20 @@ WHERE timestamp >= now() - INTERVAL ${rangeHours} HOUR
   AND timestamp <= now()`
 }
 
+const countriesQuery = `SELECT
+  properties.$geoip_country_code AS country,
+  uniqExact(person_id) AS users
+FROM events
+WHERE timestamp >= now() - INTERVAL 168 HOUR
+  AND properties.$geoip_country_code IS NOT NULL
+  AND properties.$geoip_country_code != ''
+GROUP BY country
+ORDER BY users DESC
+LIMIT 5`
+
+const quoteHogQlString = (value: string): string =>
+  `'${value.replaceAll("'", "''")}'`
+
 const messageFrom = (cause: unknown): string =>
   cause instanceof Error ? cause.message : String(cause)
 
@@ -80,30 +100,57 @@ export const layer = Layer.effect(
   Effect.gen(function* () {
     const config = yield* Configuration
     const client = yield* HttpClient.HttpClient
+    const endpoint = new URL(
+      `/api/projects/${config.projectId}/query/`,
+      config.host,
+    )
 
-    const fetchStats = Effect.fn("PostHog.fetchStats")(function* () {
-      const definitions = config.widgets.map((id) => widgetDefinitions[id])
-      const endpoint = new URL(
-        `/api/projects/${config.projectId}/query/`,
-        config.host,
-      )
+    const executeQuery = Effect.fn("PostHog.executeQuery")(function* (
+      query: string,
+      name: string,
+    ) {
       const request = yield* HttpClientRequest.post(endpoint).pipe(
         HttpClientRequest.bearerToken(config.apiKey),
         HttpClientRequest.acceptJson,
         HttpClientRequest.bodyJson({
-          query: { kind: "HogQLQuery", query: buildQuery(definitions) },
-          name: "termhog_widgets",
+          query: { kind: "HogQLQuery", query },
+          name,
           refresh: "blocking",
         }),
       )
       const response = yield* client.execute(request)
       const ok = yield* HttpClientResponse.filterStatusOk(response)
       const body = yield* Schema.decodeUnknownEffect(QueryResponse)(yield* ok.json)
-      const row = body.results[0]
-      let offset = 0
-      const widgets: Array<WidgetStats> = []
+      return body.results
+    })
 
-      for (const definition of definitions) {
+    const fetchStats = Effect.fn("PostHog.fetchStats")(function* () {
+      const definitions = config.widgets.map((id) => {
+        const definition = widgetDefinitions[id]
+        if (id !== "path") return definition
+        return {
+          ...definition,
+          title: config.pathFilter,
+          filter: `event = '$pageview' AND properties.$pathname = ${quoteHogQlString(config.pathFilter)}`,
+        }
+      })
+      const trendDefinitions = definitions.filter(
+        (definition) => definition.kind === "trend",
+      )
+      const hasCountries = config.widgets.includes("countries")
+      const [trendRows, countryRows] = yield* Effect.all([
+        trendDefinitions.length > 0
+          ? executeQuery(buildTrendQuery(trendDefinitions), "termhog_trend_widgets")
+          : Effect.succeed([]),
+        hasCountries
+          ? executeQuery(countriesQuery, "termhog_country_widget")
+          : Effect.succeed([]),
+      ], { concurrency: "unbounded" })
+      const row = trendRows[0]
+      let offset = 0
+      const widgets = new Map<string, WidgetStats>()
+
+      for (const definition of trendDefinitions) {
         const eventCount = Number(row?.[offset])
         const uniqueUsers = Number(row?.[offset + 1])
         const previousEventCount = Number(row?.[offset + 2])
@@ -127,7 +174,7 @@ export const layer = Layer.effect(
           })
         }
 
-        widgets.push({
+        widgets.set(definition.id, {
           id: definition.id,
           title: definition.title,
           rangeLabel: definition.rangeLabel,
@@ -139,14 +186,44 @@ export const layer = Layer.effect(
         })
       }
 
+      if (hasCountries) {
+        const items = countryRows.map((countryRow) => ({
+          label: String(countryRow[0]),
+          value: Number(countryRow[1]),
+        }))
+        if (items.some((item) => !Number.isFinite(item.value))) {
+          return yield* new PostHogError({
+            operation: "PostHog.fetchStats",
+            message: "PostHog returned an unexpected country ranking",
+          })
+        }
+        const definition = widgetDefinitions.countries
+        widgets.set("countries", {
+          id: definition.id,
+          title: definition.title,
+          rangeLabel: definition.rangeLabel,
+          eventCount: 0,
+          previousEventCount: 0,
+          uniqueUsers: 0,
+          previousUniqueUsers: 0,
+          eventBuckets: [],
+          items,
+        })
+      }
+
+      const orderedWidgets = config.widgets.flatMap((id) => {
+        const widget = widgets.get(id)
+        return widget ? [widget] : []
+      })
+
       return {
         generatedAt: new Date().toISOString(),
         label: config.label,
-        widgets,
+        widgets: orderedWidgets,
       }
     }, (effect) =>
       effect.pipe(
-        Effect.timeout("12 seconds"),
+        Effect.timeout("20 seconds"),
         Effect.mapError((cause) =>
           cause instanceof PostHogError
             ? cause

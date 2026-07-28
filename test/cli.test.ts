@@ -32,7 +32,7 @@ describe("Effect CLI", () => {
   })
 
   test("validates widget choices before running a handler", () => {
-    const result = run("widgets", "set", "countries")
+    const result = run("widgets", "set", "retention")
     const output = `${result.stdout.toString()}${result.stderr.toString()}`
 
     expect(result.exitCode).toBe(1)

@@ -93,6 +93,7 @@ Optional settings:
 export TERMHOG_CACHE_TTL_SECONDS="300"
 export TERMHOG_LABEL="PostHog"
 export TERMHOG_CACHE_DIR="$HOME/.cache/termhog"
+export TERMHOG_PATH="/pricing"
 ```
 
 For manual environment-based configuration, prime the cache once:
@@ -141,7 +142,11 @@ Startup output is composed of configurable PostHog widgets. The built-ins are:
 
 - `24h`: hourly event activity and unique users over the last 24 hours.
 - `week`: a three-row daily activity chart and unique users over seven days.
+- `month`: daily activity over 30 days, compared with the prior 30 days.
+- `year`: a 12-bucket rolling-year trend, compared with the prior year.
 - `mobile`: hourly activity filtered to `$device_type = 'Mobile'`.
+- `countries`: the top five countries by unique users over seven days.
+- `path`: seven-day `$pageview` activity for one selected `$pathname`.
 
 Event and user percentages compare against the immediately preceding matching
 period: prior 24 hours, prior seven days, or prior mobile 24 hours. A positive
@@ -155,15 +160,18 @@ termhog widgets list
 termhog widgets set 24h week mobile
 termhog widgets add week
 termhog widgets remove mobile
+termhog widgets path /pricing
 ```
 
 The order passed to `termhog widgets set` is the display order. Widget
 selection can also be overridden with `TERMHOG_WIDGETS=24h,week,mobile`.
-Currently, `24h`, `week`, and `mobile` are the supported built-ins; custom
-queries, filters, titles, and dimensions are not configurable yet.
+The selected path must start with `/`. Setting it automatically enables the
+`path` widget. Custom HogQL, titles, and dimensions are not configurable yet.
 
-Selected widgets are combined into one HogQL request and one events-table scan.
-The weekly comparison scans 14 days to cover both adjacent seven-day periods.
+Selected trend widgets are combined into one HogQL request and one events-table
+scan. The country ranking adds a second grouped query only when enabled. Weekly,
+monthly, and yearly comparisons respectively scan 14 days, 60 days, and two
+rolling years to cover current and previous periods.
 
 ## Commands
 

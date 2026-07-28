@@ -18,6 +18,7 @@ export interface Interface {
   readonly cacheTtlMs: number
   readonly label: string
   readonly widgets: ReadonlyArray<WidgetId>
+  readonly pathFilter: string
 }
 
 export class Service extends Context.Service<Service, Interface>()(
@@ -43,6 +44,7 @@ const recipe = Config.all({
   widgets: Config.string("TERMHOG_WIDGETS").pipe(
     Config.withDefault("24h,week,mobile"),
   ),
+  pathFilter: Config.string("TERMHOG_PATH").pipe(Config.withDefault("/")),
 })
 
 export const layer = Layer.effect(
@@ -58,6 +60,7 @@ export const layer = Layer.effect(
           POSTHOG_HOST: value.host,
           TERMHOG_LABEL: value.label,
           TERMHOG_WIDGETS: value.widgets?.join(","),
+          TERMHOG_PATH: value.pathFilter,
         }),
       }),
     )
@@ -79,6 +82,7 @@ export const layer = Layer.effect(
       cacheTtlMs: config.cacheTtlSeconds * 1_000,
       label: config.label,
       widgets,
+      pathFilter: config.pathFilter,
     })
   }),
 )

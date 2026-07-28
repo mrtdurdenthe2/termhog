@@ -185,6 +185,7 @@ export const runConfigure = async (): Promise<void> => {
     host: host.origin,
     label: project.name,
     widgets: ["24h", "week", "mobile"],
+    pathFilter: "/",
   }))
 
   // Ensure the initial refresh uses the values just validated, even when the
@@ -194,6 +195,7 @@ export const runConfigure = async (): Promise<void> => {
   process.env.POSTHOG_HOST = host.origin
   process.env.TERMHOG_LABEL = project.name
   process.env.TERMHOG_WIDGETS = "24h,week,mobile"
+  process.env.TERMHOG_PATH = "/"
 
   const { runRefresh } = await import("./refresh.ts")
   await runRefresh(true)
@@ -213,4 +215,5 @@ export const runConfigure = async (): Promise<void> => {
   process.stdout.write("  termhog widgets set 24h week mobile\n")
   process.stdout.write("  termhog widgets add week\n")
   process.stdout.write("  termhog widgets remove mobile\n")
+  process.stdout.write("  termhog widgets path /pricing\n")
 }

@@ -9,6 +9,7 @@ export const StoredConfiguration = Schema.Struct({
   host: Schema.String,
   label: Schema.NonEmptyString,
   widgets: Schema.optionalKey(Schema.Array(Schema.String)),
+  pathFilter: Schema.optionalKey(Schema.String),
 })
 
 export interface StoredConfiguration

@@ -43,7 +43,7 @@ const refresh = Command.make(
 ).pipe(Command.withDescription("Refresh cached PostHog statistics"))
 
 const widgetArgument = Argument.choice("widget", widgetIds).pipe(
-  Argument.withDescription("Widget to display: 24h, week, or mobile"),
+  Argument.withDescription("Widget to display"),
   Argument.variadic({ min: 1 }),
 )
 
@@ -77,13 +77,31 @@ const widgetRemove = Command.make(
   ),
 ).pipe(Command.withDescription("Remove one or more startup widgets"))
 
+const widgetPath = Command.make(
+  "path",
+  {
+    pathname: Argument.string("pathname").pipe(
+      Argument.withDescription("Page path to track, for example /pricing"),
+    ),
+  },
+  ({ pathname }) => action(async () =>
+    (await import("./widget-command.ts")).runWidgets(["path", pathname])
+  ),
+).pipe(Command.withDescription("Configure and enable the selected-path widget"))
+
 const widgets = Command.make(
   "widgets",
   {},
   () => action(async () => (await import("./widget-command.ts")).runWidgets(["list"])),
 ).pipe(
   Command.withDescription("List or change terminal output widgets"),
-  Command.withSubcommands([widgetList, widgetSet, widgetAdd, widgetRemove]),
+  Command.withSubcommands([
+    widgetList,
+    widgetSet,
+    widgetAdd,
+    widgetRemove,
+    widgetPath,
+  ]),
 )
 
 const shellArgument = Argument.choice("shell", [...supportedShells, "all"]).pipe(
